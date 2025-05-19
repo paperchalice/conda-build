@@ -35,6 +35,7 @@ VS_VERSION_STRING = {
     "11.0": "Visual Studio 11 2012",
     "12.0": "Visual Studio 12 2013",
     "14.0": "Visual Studio 14 2015",
+    "17.0": "Visual Studio 17 2022",
 }
 
 
