@@ -246,17 +246,17 @@ def msvc_env_cmd(bits, config, override=None):
 
 
 def write_build_scripts(m, env, bld_bat):
-    env_script = join(m.config.work_dir, "build_env_setup.bat")
+    env_script = join(m.config.work_dir, "build_env_setup.psm1")
     if m.python_version_independent:
         env["PYTHONDONTWRITEBYTECODE"] = True
     import codecs
 
     with codecs.getwriter("utf-8")(open(env_script, "wb")) as fo:
-        # more debuggable with echo on
-        fo.write("@echo on\n")
         for key, value in env.items():
             if value != "" and value is not None:
-                fo.write(f'set "{key}={value}"\n')
+                fo.write(f'${{Env:{key}}} = "{value}"\n')
+                fo.write(f'${{{key}}} = "{value}"\n')
+                fo.write(f'Export-ModuleMember -Variable "{key}"\n')
         if not m.uses_new_style_compiler_activation:
             fo.write(
                 msvc_env_cmd(
@@ -266,21 +266,23 @@ def write_build_scripts(m, env, bld_bat):
                 )
             )
         # Reset echo on, because MSVC scripts might have turned it off
-        fo.write("@echo on\n")
-        fo.write('set "INCLUDE={};%INCLUDE%"\n'.format(env["LIBRARY_INC"]))
-        fo.write('set "LIB={};%LIB%"\n'.format(env["LIBRARY_LIB"]))
+        fo.write('$Env:INCLUDE="{};%INCLUDE%"\n'.format(env["LIBRARY_INC"]))
+        fo.write('$Env:LIB="{};%LIB%"\n'.format(env["LIBRARY_LIB"]))
         if m.config.activate and m.name() != "conda":
             write_bat_activation_text(fo, m)
     # bld_bat may have been generated elsewhere with contents of build/script
-    work_script = join(m.config.work_dir, "conda_build.bat")
+    work_script = join(m.config.work_dir, "conda_build.ps1")
     if os.path.isfile(bld_bat):
         with open(bld_bat) as fi:
             data = fi.read()
         with codecs.getwriter("utf-8")(open(work_script, "wb")) as fo:
-            fo.write('IF "%CONDA_BUILD%" == "" (\n')
-            fo.write(f"    call {env_script}\n")
-            fo.write(")\n")
-            fo.write("REM ===== end generated header =====\n")
+            fo.write('if (!$Env:CONDA_BUILD) {\n')
+            fo.write(f"    Import-Module {env_script}\n")
+            fo.write("""if (Get-Module -ListAvailable -Name VsLatest) {
+    Import-Module VsLatest
+}""")
+            fo.write("}\n")
+            fo.write("# ===== end generated header =====\n")
             fo.write(data)
     return work_script, env_script
 
@@ -328,7 +330,7 @@ def build(m, bld_bat, stats, provision_only=False):
     work_script, env_script = write_build_scripts(m, env, bld_bat)
 
     if not provision_only and os.path.isfile(work_script):
-        cmd = ["cmd.exe", "/d", "/c", os.path.basename(work_script)]
+        cmd = ["pwsh.exe", os.path.basename(work_script)]
         # rewrite long paths in stdout back to their env variables
         if m.config.debug or m.config.no_rewrite_stdout_env:
             rewrite_env = None

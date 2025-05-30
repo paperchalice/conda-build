@@ -2010,7 +2010,7 @@ def bundle_wheel(
     stats,
     new_prefix_files: set[str] = set(),
 ):
-    ext = ".bat" if utils.on_win else ".sh"
+    ext = ".ps1" if utils.on_win else ".sh"
     with TemporaryDirectory() as tmpdir, utils.tmp_chdir(metadata.config.work_dir):
         dest_file = os.path.join(metadata.config.work_dir, "wheel_output" + ext)
         with open(dest_file, "w") as f:
@@ -2118,7 +2118,7 @@ def _write_sh_activation_text(file_handle, m):
 
     # Do not stack against base env when not cross.
     stack = "--stack" if m.is_cross else ""
-    file_handle.write(f'conda activate {stack} "{build_prefix_path}"\n')
+    file_handle.write(f'Invoke-Expression "$Env:CONDA_EXE $Env:_CE_M $Env:_CE_CONDA shell.powershell activate {stack} {build_prefix_path}"\n')
 
     from .os_utils.external import find_executable
 
@@ -2507,9 +2507,9 @@ def build(
         if isdir(src_dir):
             build_stats = {}
             if utils.on_win:
-                build_file = join(m.path, "bld.bat")
+                build_file = join(m.path, "bld.ps1")
                 if script:
-                    build_file = join(src_dir, "bld.bat")
+                    build_file = join(src_dir, "bld.ps1")
                     import codecs
 
                     with codecs.getwriter("utf-8")(open(build_file, "wb")) as bf:
