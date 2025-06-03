@@ -2108,9 +2108,19 @@ def compute_content_hash(
 def write_bat_activation_text(file_handle, m):
     from .os_utils.external import find_executable
 
-    file_handle.write(f'call "{context.root_prefix}\\condabin\\conda_hook.bat"\n')
+    file_handle.write(f'{context.root_prefix}\\shell\\condabin\\conda-hook.ps1\n')
+    def get_val(value):
+        if not value:
+            return "$null"
+        if value == "True" or value == "1":
+            return "$true"
+        if value == "False":
+            return "$false"
+        if value.isdigit():
+            return value
+        return f'"{value}"'
     for key, value in context.conda_exe_vars_dict.items():
-        file_handle.write(f'set "{key}={value or ""}"\n')
+        file_handle.write(f'${{Env:{key}}}={get_val(value)}\n')
     if m.is_cross:
         # HACK: we need both build and host envs "active" - i.e. on PATH,
         #     and with their activate.d scripts sourced. Conda only
@@ -2135,12 +2145,15 @@ def write_bat_activation_text(file_handle, m):
             open(history_file, "a").close()
 
         file_handle.write(
-            f'call "{context.root_prefix}\\condabin\\conda.bat" activate "{m.config.host_prefix}"\n'
+            f'# call "{context.root_prefix}\\condabin\\conda.bat" activate "{m.config.host_prefix}"\n'
         )
 
     # Write build prefix activation AFTER host prefix, so that its executables come first
     file_handle.write(
-        f'call "{context.root_prefix}\\condabin\\conda.bat" activate --stack "{m.config.build_prefix}"\n'
+        f'$Env:PSModulePath = $Env:PSModulePath+";$ROOT/etc/conda/Modules"\n'
+    )
+    file_handle.write(
+        f'Enter-CondaEnvironment -Stack "{m.config.build_prefix}"\n'
     )
 
     ccache = find_executable("ccache", m.config.build_prefix, False)
