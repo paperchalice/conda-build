@@ -287,6 +287,8 @@ def write_build_scripts(m, env, bld_bat):
         with codecs.getwriter("utf-8")(open(work_script, "wb")) as fo:
             fo.write(f"Import-Module {env_script}\n")
             fo.write("Import-Module VsLatest\n")
+            fo.write('$ErrorActionPreference = "Stop"\n')
+            fo.write('$PSNativeCommandUseErrorActionPreference   = $true\n')
             fo.write("# ===== end generated header =====\n")
             fo.write(data)
     return work_script, env_script
