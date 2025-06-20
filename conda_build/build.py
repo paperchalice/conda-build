@@ -2690,8 +2690,8 @@ def build(
                         utils.rm_rf(m.config.build_prefix)
                         utils.rm_rf(m.config.test_prefix)
 
-                        host_ms_deps = m.ms_depends("host")
-                        sub_build_ms_deps = m.ms_depends("build")
+                        host_ms_deps = [] # m.ms_depends("host")
+                        sub_build_ms_deps = [] # m.ms_depends("build")
                         if m.is_cross and not m.build_is_host:
                             host_precs = environ.get_package_records(
                                 m.config.host_prefix,
