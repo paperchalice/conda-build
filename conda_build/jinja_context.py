@@ -462,7 +462,7 @@ def native_compiler(language, config):
         except KeyError:
             continue
     if hasattr(compiler, "keys"):
-        compiler = compiler.get(config.variant.get("python", "nope"), "vs2017")
+        compiler = compiler.get(config.variant.get("python", "nope"), "vs2022")
     return compiler
 
 
