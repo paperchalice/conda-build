@@ -812,7 +812,7 @@ def _get_patch_attributes(
         def __exit__(self, exc, value, tb):
             return
 
-    fmts = OrderedDict(native=["--binary"], lf=[], crlf=[])
+    fmts = OrderedDict(native=["-l"], lf=[], crlf=[])
     if patch_exe:
         # Good, we have a patch executable so we can perform some checks:
         with (
