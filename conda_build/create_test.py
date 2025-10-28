@@ -46,7 +46,7 @@ def _get_output_script_name(
     # the way this works is that each output needs to explicitly define a test script to run.
     #   They do not automatically pick up run_test.*, but can be pointed at that explicitly.
 
-    ext = ".bat" if win_status else ".sh"
+    ext = ".ps1" if win_status else ".sh"
     dst_name = "run_test" + ext
     src_name = dst_name
     if m.is_output:
@@ -86,11 +86,11 @@ def create_shell_files(m: MetaData, test_dir: os.PathLike) -> list[str]:
                     f.write(cmd)
                     f.write("\n")
                     if status:
-                        f.write("IF %ERRORLEVEL% NEQ 0 exit /B 1\n")
+                        f.write("# IF %ERRORLEVEL% NEQ 0 exit /B 1\n")
                 if status:
-                    f.write("exit /B 0\n")
+                    f.write("# exit /B 0\n")
                 else:
-                    f.write("exit 0\n")
+                    f.write("# exit 0\n")
         if isfile(dest_file):
             shell_files.append(dest_file)
     return shell_files

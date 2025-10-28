@@ -3105,12 +3105,12 @@ def _write_test_run_script(
     with open(test_run_script, "w") as tf:
         tf.write(
             '{source} "{test_env_script}"\n'.format(
-                source="call" if utils.on_win else "source",
+                source="&" if utils.on_win else "source",
                 test_env_script=test_env_script,
             )
         )
         if utils.on_win:
-            tf.write("IF %ERRORLEVEL% NEQ 0 exit /B 1\n")
+            tf.write("# IF %ERRORLEVEL% NEQ 0 exit /B 1\n")
         else:
             tf.write(f"set {trace}-e\n")
         if py_files:
@@ -3119,16 +3119,16 @@ def _write_test_run_script(
             if metadata.get_value("build/osx_is_app") and on_mac:
                 test_python = test_python + "w"
             tf.write(
-                '"{python}" -s "{test_file}"\n'.format(
+                '& "{python}" -s "{test_file}"\n'.format(
                     python=test_python,
                     test_file=join(metadata.config.test_dir, "run_test.py"),
                 )
             )
             if utils.on_win:
-                tf.write("IF %ERRORLEVEL% NEQ 0 exit /B 1\n")
+                tf.write("# IF %ERRORLEVEL% NEQ 0 exit /B 1\n")
         if pl_files:
             tf.write(
-                '"{perl}" "{test_file}"\n'.format(
+                '& "{perl}" "{test_file}"\n'.format(
                     perl=metadata.config.perl_bin(
                         metadata.config.test_prefix, metadata.config.host_platform
                     ),
@@ -3136,10 +3136,10 @@ def _write_test_run_script(
                 )
             )
             if utils.on_win:
-                tf.write("IF %ERRORLEVEL% NEQ 0 exit /B 1\n")
+                tf.write("# IF %ERRORLEVEL% NEQ 0 exit /B 1\n")
         if lua_files:
             tf.write(
-                '"{lua}" "{test_file}"\n'.format(
+                '& "{lua}" "{test_file}"\n'.format(
                     lua=metadata.config.lua_bin(
                         metadata.config.test_prefix, metadata.config.host_platform
                     ),
@@ -3147,10 +3147,10 @@ def _write_test_run_script(
                 )
             )
             if utils.on_win:
-                tf.write("IF %ERRORLEVEL% NEQ 0 exit /B 1\n")
+                tf.write("# IF %ERRORLEVEL% NEQ 0 exit /B 1\n")
         if r_files:
             tf.write(
-                '"{r}" "{test_file}"\n'.format(
+                '& "{r}" "{test_file}"\n'.format(
                     r=metadata.config.rscript_bin(
                         metadata.config.test_prefix, metadata.config.host_platform
                     ),
@@ -3158,13 +3158,13 @@ def _write_test_run_script(
                 )
             )
             if utils.on_win:
-                tf.write("IF %ERRORLEVEL% NEQ 0 exit /B 1\n")
+                tf.write("# IF %ERRORLEVEL% NEQ 0 exit /B 1\n")
         if shell_files:
             for shell_file in shell_files:
                 if utils.on_win:
-                    if os.path.splitext(shell_file)[1] == ".bat":
-                        tf.write(f'call "{shell_file}"\n')
-                        tf.write("IF %ERRORLEVEL% NEQ 0 exit /B 1\n")
+                    if os.path.splitext(shell_file)[1] == ".ps1":
+                        tf.write(f'& "{shell_file}"\n')
+                        tf.write("# IF %ERRORLEVEL% NEQ 0 exit /B 1\n")
                     else:
                         log.warning(
                             "Found sh test file on windows.  Ignoring this for now (PRs welcome)"
@@ -3192,7 +3192,7 @@ def write_test_scripts(
 
     # Python 2 Windows requires that envs variables be string, not unicode
     env_vars = {str(key): str(value) for key, value in env_vars.items()}
-    suffix = "bat" if utils.on_win else "sh"
+    suffix = "ps1" if utils.on_win else "sh"
     test_env_script = join(metadata.config.test_dir, f"conda_test_env_vars.{suffix}")
     test_run_script = join(metadata.config.test_dir, f"conda_test_runner.{suffix}")
 
@@ -3202,13 +3202,15 @@ def write_test_scripts(
         if metadata.config.activate and not metadata.name() == "conda":
             if utils.on_win:
                 tf.write(
-                    'set "CONDA_SHLVL=" '
-                    "&& @CALL {}\\condabin\\conda_hook.bat {}"
-                    "&& set CONDA_EXE={python_exe}"
-                    "&& set CONDA_PYTHON_EXE={python_exe}"
-                    "&& set _CE_I={}"
-                    "&& set _CE_M=-m"
-                    "&& set _CE_CONDA=conda\n".format(
+                    '$ErrorActionPreference = "Stop"\n'
+                    '$PSNativeCommandUseErrorActionPreference = $true\n'
+                    '$Env:CONDA_SHLVL=$null\n'
+                    "& {}\\shell\\condabin\\conda-hook.ps1 {}\n"
+                    "$Env:CONDA_EXE=\"{python_exe}\"\n"
+                    "$Env:CONDA_PYTHON_EXE=\"{python_exe}\"\n"
+                    "$Env:_CE_I=\"{}\"\n"
+                    "$Env:_CE_M=\"-m\"\n"
+                    "$Env:_CE_CONDA=\"conda\"\n".format(
                         sys.prefix,
                         "--dev" if metadata.config.debug else "",
                         "-i"
@@ -3228,7 +3230,7 @@ def write_test_scripts(
                 )
             tf.write(f'conda activate "{metadata.config.test_prefix}"\n')
             if utils.on_win:
-                tf.write("IF %ERRORLEVEL% NEQ 0 exit /B 1\n")
+                tf.write("# IF %ERRORLEVEL% NEQ 0 exit /B 1\n")
         # In-case people source this, it's essential errors are not fatal in an interactive shell.
         if not utils.on_win:
             tf.write("set +e\n")
@@ -3470,7 +3472,7 @@ def test(
     )
 
     if utils.on_win:
-        cmd = [os.environ.get("COMSPEC", "cmd.exe"), "/d", "/c", test_script]
+        cmd = [os.environ.get("PWSH", "pwsh.exe"), test_script]
     else:
         cmd = (
             [shell_path]
@@ -3488,9 +3490,9 @@ def test(
                 if metadata.config.verbose:
                     for k, v in rewrite_env.items():
                         print(
-                            "{} {}={}".format(
-                                "set" if test_script.endswith(".bat") else "export",
-                                k,
+                            "{} {}=\"{}\"".format(
+                                "" if test_script.endswith(".ps1") else "export",
+                                f'$Env:{k}',
                                 v,
                             )
                         )
