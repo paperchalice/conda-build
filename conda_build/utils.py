@@ -2109,7 +2109,13 @@ def compute_content_hash(
 def write_bat_activation_text(file_handle, m):
     from .os_utils.external import find_executable
 
-    file_handle.write(f'{context.root_prefix}\\shell\\condabin\\conda-hook.ps1\n')
+    file_handle.write(f'& {context.root_prefix}\\shell\\condabin\\conda-hook.ps1\n')
+    file_handle.write(
+        '$ErrorActionPreference = "Stop"\n'
+        'Export-ModuleMember -Variable "ErrorActionPreference"\n'
+        '$PSNativeCommandUseErrorActionPreference = $true\n'
+        'Export-ModuleMember -Variable "PSNativeCommandUseErrorActionPreference"\n'
+    )
     def get_val(value):
         if not value:
             return "$null"
@@ -2146,17 +2152,14 @@ def write_bat_activation_text(file_handle, m):
             open(history_file, "a").close()
 
         file_handle.write(
-            f'$Env:PSModulePath += "{context.root_prefix}\\etc\\conda\\Modules"\n'
-            'Import-Module VsLatest\n'
-            f'& {context.root_prefix}\\shell\\condabin\\conda-hook.ps1\n'
             f'conda activate -Stack "{m.config.host_prefix}"\n'
             f'# call "{context.root_prefix}\\condabin\\conda.bat" activate "{m.config.host_prefix}"\n'
         )
 
     # Write build prefix activation AFTER host prefix, so that its executables come first
     file_handle.write(
-        f'& {context.root_prefix}\\shell\\condabin\\conda-hook.ps1\n'
         f'conda activate -Stack "{m.config.build_prefix}"\n'
+        f'$Env:PSModulePath += ";{m.config.build_prefix}\\etc\\conda\\Modules"\n'
     )
 
     ccache = find_executable("ccache", m.config.build_prefix, False)

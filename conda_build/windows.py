@@ -330,9 +330,8 @@ def write_build_scripts(m, env, bld_bat):
         with open(bld_bat) as fi:
             data = fi.read()
         with codecs.getwriter("utf-8")(open(work_script, "wb")) as fo:
-            fo.write('$ErrorActionPreference = "Stop"\n')
-            fo.write('$PSNativeCommandUseErrorActionPreference = $true\n')
             fo.write(f"Import-Module {env_script}\n")
+            fo.write('Import-Module VsLatest\n')
             fo.write("# ===== end generated header =====\n")
             fo.write(data)
     return work_script, env_script
